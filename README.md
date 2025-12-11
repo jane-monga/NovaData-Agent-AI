@@ -116,7 +116,7 @@ Résultat : Lead mis à jour + confirmation envoyée
 
 Installation
 1. Cloner le repo
-git clone https://github.com/votre-org/agent-ia-rdv.git
+git clone (https://github.com/jane-monga/NovaData-Agent-AI/blob/main/agent-ia/workflow.json)
 cd agent-ia-rdv
 2. Pré-requis
 Vous devez posséder :
