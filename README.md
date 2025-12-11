@@ -5,11 +5,11 @@ Introduction
 Cet Agent IA automatise tout le processus d’accueil d’un prospect depuis la réception d’un dossier jusqu’à la réservation d’un rendez-vous.
 Il repose sur un ensemble de workflows n8n orchestrant plusieurs APIs : Gmail, OpenAI, Airtable et Google Calendar.
 Grâce à cet agent, l’entreprise n’a plus besoin d’effectuer manuellement :
-✔ la lecture des pièces jointes
-✔ l’analyse des informations administratives
-✔ la création d’un lead dans le CRM
-✔ l’envoi des propositions de créneaux
-✔ la confirmation lorsque le prospect réserve un créneau
+. la lecture des pièces jointes
+. l’analyse des informations administratives
+. la création d’un lead dans le CRM
+. l’envoi des propositions de créneaux
+. la confirmation lorsque le prospect réserve un créneau
 Tout est automatisé de bout en bout.
 
  Fonctionnalités principales
