@@ -1,0 +1,1198 @@
+{
+  "name": "NovaData",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment",
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        -128
+      ],
+      "id": "6aa16892-dab3-4f91-8f21-744229fe8621",
+      "name": "New Email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "iCcUWsp8HcE8L78R",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Tu es un agent qui reçoit du texte extrait d'un PDF.\nRetourne UNIQUEMENT un JSON strict, sans phrase avant ou après.\nSi une information est absente, mets \"\".\n\nSchema JSON EXACT à respecter :\n\n{\n \"Nom\": \"\",\n \"Prénom\": \"\",\n \"Email\": \"\",\n \"Téléphone\": \"\",\n \"Type de besoin\": \"\",\n \"Statut du lead\": \"Nouveau\",\n \"Date d'entrée\": \"\",\n}\n\nVoici le texte à analyser :\n{{ $json[\"text\"] }}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_schema"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        -128
+      ],
+      "id": "9b865a78-455e-4870-8d45-103fa274f637",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "QMAVXIHCvmk6K92M",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// On récupère l'ID du lead créé dans Airtable\nconst item = $input.first();          // récupère le premier item en entrée\nconst leadId = item.json.id;          // l'ID du record Airtable\n\n// --- Fonction utilitaire : avancer la date jusqu'au prochain jour ouvré ---\nfunction nextWeekday(date) {\n  const day = date.getDay(); \n  // 0 = Dimanche, 6 = Samedi\n  if (day === 6) { \n    date.setDate(date.getDate() + 2); // Samedi → Lundi\n  } else if (day === 0) { \n    date.setDate(date.getDate() + 1); // Dimanche → Lundi\n  }\n  return date;\n}\n\n// --- Générer les 3 prochains jours ouvrés ---\nlet slots = [];\nlet current = new Date();\n\n// On part de demain\ncurrent.setDate(current.getDate() + 1);\ncurrent = nextWeekday(current);\n\n// --- Création des créneaux sur 3 jours ouvrés, entre 13h et 17h, toutes les 30 min ---\nfor (let i = 0; i < 3; i++) {\n\n  let day = new Date(current);\n\n  for (let hour = 13; hour < 17; hour++) {\n    for (let minutes of [0, 30]) {\n\n      let slot = new Date(day);\n      slot.setHours(hour, minutes, 0, 0);\n\n      slots.push({\n        label: slot.toLocaleString(\"fr-FR\", {\n          weekday: 'long',\n          day: 'numeric',\n          month: 'long',\n          hour: '2-digit',\n          minute: '2-digit'\n        }),\n        iso: slot.toISOString()\n      });\n    }\n  }\n\n  // Jour suivant ouvré\n  current.setDate(current.getDate() + 1);\n  current = nextWeekday(current);\n}\n\n// Construction du HTML des boutons cliquables\nconst webhookBase = \"https://novadata.app.n8n.cloud/webhook/rdv\";\n\nlet html = \"\";\n\nfor (let slot of slots) {\n  html += `\n    <a href=\"${webhookBase}?lead=${leadId}&slot=${encodeURIComponent(slot.iso)}\"\n       style=\"display:block;margin-bottom:8px;padding:10px;\n              background:#007BFF;color:white;text-decoration:none;\n              border-radius:5px;width:280px;\">\n      📅 ${slot.label}\n    </a>\n  `;\n}\n\n// ⚠️ IMPORTANT : on renvoie un item avec une propriété `json`\nreturn [\n  {\n    json: {\n      slotsHtml: html\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        -128
+      ],
+      "id": "8bf37b85-11cc-4100-9a81-cdbfbd6f28ec",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=attachment0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        384,
+        -128
+      ],
+      "id": "7193ed45-8260-4eba-974b-32973f08126a",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appi5OovNSJ1DcrxW",
+          "mode": "list",
+          "cachedResultName": "Base de données leads",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblIKVGpN2LcT5SB0",
+          "mode": "list",
+          "cachedResultName": "Base de donnée des leads",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW/tblIKVGpN2LcT5SB0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nom": "={{ JSON.parse($node[\"Message a model\"].json.output[0].content[0].text.message)[\"Nom\"] }}",
+            "Prénom": "={{ JSON.parse($node[\"Message a model\"].json.output[0].content[0].text.message)[\"Prénom\"] }}",
+            "Email": "={{ JSON.parse($node[\"Message a model\"].json.output[0].content[0].text.message)[\"Email\"] }}",
+            "Type de besoin": "={{ JSON.parse($node[\"Message a model\"].json.output[0].content[0].text.message)[\"Type de besoin\"] }}",
+            "Téléphone": "={{ JSON.parse($node[\"Message a model\"].json.output[0].content[0].text.message)[\"Téléphone\"] }}",
+            "Analyse – Capacité emprunt": 0,
+            "Analyse – Taux endettement (%)": 0,
+            "Analyse – Revenu net mensuel": 0
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Nom",
+              "displayName": "Nom",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Prénom",
+              "displayName": "Prénom",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Téléphone",
+              "displayName": "Téléphone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date d’entrée",
+              "displayName": "Date d’entrée",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Type de besoin",
+              "displayName": "Type de besoin",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Immobilier",
+                  "value": "Immobilier"
+                },
+                {
+                  "name": "Investissement",
+                  "value": "Investissement"
+                },
+                {
+                  "name": "Assurance",
+                  "value": "Assurance"
+                },
+                {
+                  "name": "Coaching financier",
+                  "value": "Coaching financier"
+                },
+                {
+                  "name": "Perso",
+                  "value": "Perso"
+                },
+                {
+                  "name": "résidence principale",
+                  "value": "résidence principale"
+                },
+                {
+                  "name": "Investissement immobilier",
+                  "value": "Investissement immobilier"
+                },
+                {
+                  "name": "Achat résidence principale",
+                  "value": "Achat résidence principale"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Statut du lead",
+              "displayName": "Statut du lead",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "nouveau",
+                  "value": "nouveau"
+                },
+                {
+                  "name": "En analyse",
+                  "value": "En analyse"
+                },
+                {
+                  "name": "Dossier cohérent",
+                  "value": "Dossier cohérent"
+                },
+                {
+                  "name": "À vérifier",
+                  "value": "À vérifier"
+                },
+                {
+                  "name": "Incohérent / Refusé",
+                  "value": "Incohérent / Refusé"
+                },
+                {
+                  "name": "Converti / RDV pris",
+                  "value": "Converti / RDV pris"
+                },
+                {
+                  "name": "RDV programmé",
+                  "value": "RDV programmé"
+                },
+                {
+                  "name": "Accusé de réception envoyé",
+                  "value": "Accusé de réception envoyé"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Date de rendez-vous",
+              "displayName": "Date de rendez-vous",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Conseiller assigné",
+              "displayName": "Conseiller assigné",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Conseillé A",
+                  "value": "Conseillé A"
+                },
+                {
+                  "name": "Conseillé B",
+                  "value": "Conseillé B"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Documents manquants",
+              "displayName": "Documents manquants",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Statut documents",
+              "displayName": "Statut documents",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Manquants",
+                  "value": "Manquants"
+                },
+                {
+                  "name": "Partiels",
+                  "value": "Partiels"
+                },
+                {
+                  "name": "Complets",
+                  "value": "Complets"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Record_ID",
+              "displayName": "Record_ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Documents reçus",
+              "displayName": "Documents reçus",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Résumé docs",
+              "displayName": "Analyse – Résumé docs",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Nb docs reçus",
+              "displayName": "Nb docs reçus",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Analyse – Revenu net mensuel",
+              "displayName": "Analyse – Revenu net mensuel",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Taux endettement (%)",
+              "displayName": "Analyse – Taux endettement (%)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Capacité emprunt",
+              "displayName": "Analyse – Capacité emprunt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Incohérences",
+              "displayName": "Analyse – Incohérences",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Avis global",
+              "displayName": "Analyse – Avis global",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        912,
+        -128
+      ],
+      "id": "0fadc60d-b30d-44c7-8a90-367db3d46bdb",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "2hQvAFWFQwBM9tMF",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appi5OovNSJ1DcrxW",
+          "mode": "list",
+          "cachedResultName": "Base de données leads",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblIKVGpN2LcT5SB0",
+          "mode": "list",
+          "cachedResultName": "Base de donnée des leads",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW/tblIKVGpN2LcT5SB0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nb docs reçus": 0,
+            "id": "={{ $node[\"Create a record\"].json.id }}",
+            "Statut du lead": "Accusé de réception envoyé"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Nom",
+              "displayName": "Nom",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Prénom",
+              "displayName": "Prénom",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Téléphone",
+              "displayName": "Téléphone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Type de besoin",
+              "displayName": "Type de besoin",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Statut du lead",
+              "displayName": "Statut du lead",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date d’entrée",
+              "displayName": "Date d’entrée",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Conseiller assigné",
+              "displayName": "Conseiller assigné",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lien dossier Drive",
+              "displayName": "Lien dossier Drive",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Nb docs reçus",
+              "displayName": "Nb docs reçus",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Docs manquants",
+              "displayName": "Docs manquants",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Commentaires interne",
+              "displayName": "Commentaires interne",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        -128
+      ],
+      "id": "4a94002a-8f18-4079-80a0-8fbf65acb690",
+      "name": "Update record",
+      "alwaysOutputData": false,
+      "executeOnce": false,
+      "retryOnFail": false,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "2hQvAFWFQwBM9tMF",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ JSON.parse($node[\"Message a model\"].json[\"output\"][0][\"content\"][0][\"text\"][\"message\"]).Email }}",
+        "subject": "Votre demande a bien été reçue",
+        "message": "=Bonjour {{ JSON.parse($node[\"Message a model\"].json[\"output\"][0][\"content\"][0][\"text\"][\"message\"]).Prénom }}, <br><br>\nNous avons bien reçu votre dossier. <br>  \nMerci de choisir un créneau pour votre appel téléphonique :<br><br>\n\n<a href=\"https://calendar.app.google/HeGr3S2kUxRvR5pe8\" ...>\n\n 📅 Choisir un créneau\n</a> <br><br>\n\nBien cordialement, <br>\nL’équipe Paul Forbe.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        -128
+      ],
+      "id": "a1dd3d1e-b30f-4761-9ce9-0bd373a2c9d6",
+      "name": "Send a message",
+      "webhookId": "1d9f6523-0574-464f-a7cd-faa89561bd48",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "iCcUWsp8HcE8L78R",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "unit": "minutes"
+            }
+          ]
+        },
+        "calendarId": {
+          "__rl": true,
+          "value": "novadata.solution@gmail.com",
+          "mode": "list",
+          "cachedResultName": "novadata.solution@gmail.com"
+        },
+        "triggerOn": "eventCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTrigger",
+      "typeVersion": 1,
+      "position": [
+        272,
+        224
+      ],
+      "id": "4c8ca92b-f371-4963-8f9e-244de0ab0a56",
+      "name": "Google Calendar Trigger",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "IYbajqpEUkBAndjy",
+          "name": "Google Calendar account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appi5OovNSJ1DcrxW",
+          "mode": "list",
+          "cachedResultName": "Base de données leads",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblIKVGpN2LcT5SB0",
+          "mode": "list",
+          "cachedResultName": "Leads/Prospects",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW/tblIKVGpN2LcT5SB0"
+        },
+        "filterByFormula": "={{ 'Email = \"' + $node[\"Google Calendar Trigger\"].json[\"attendees\"][0][\"email\"] + '\"' }}",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        224
+      ],
+      "id": "b8f6eac1-d30f-4d42-b2d5-7dcb7fb7a514",
+      "name": "Search records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "2hQvAFWFQwBM9tMF",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appi5OovNSJ1DcrxW",
+          "mode": "list",
+          "cachedResultName": "Base de données leads",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblIKVGpN2LcT5SB0",
+          "mode": "list",
+          "cachedResultName": "Leads/Prospects",
+          "cachedResultUrl": "https://airtable.com/appi5OovNSJ1DcrxW/tblIKVGpN2LcT5SB0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Statut du lead": "RDV programmé",
+            "id": "={{ $json.id }}",
+            "Nb docs reçus": 0,
+            "Analyse – Revenu net mensuel": 0,
+            "Analyse – Taux endettement (%)": 0,
+            "Analyse – Capacité emprunt": 0,
+            "Date de rendez-vous": "={{ $node[\"Google Calendar Trigger\"].json[\"start\"][\"dateTime\"] ?? $node[\"Google Calendar Trigger\"].json[\"start\"][\"date\"] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Nom",
+              "displayName": "Nom",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Prénom",
+              "displayName": "Prénom",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Téléphone",
+              "displayName": "Téléphone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Type de besoin",
+              "displayName": "Type de besoin",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Statut du lead",
+              "displayName": "Statut du lead",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "nouveau",
+                  "value": "nouveau"
+                },
+                {
+                  "name": "En analyse",
+                  "value": "En analyse"
+                },
+                {
+                  "name": "Dossier cohérent",
+                  "value": "Dossier cohérent"
+                },
+                {
+                  "name": "À vérifier",
+                  "value": "À vérifier"
+                },
+                {
+                  "name": "Incohérent / Refusé",
+                  "value": "Incohérent / Refusé"
+                },
+                {
+                  "name": "Converti / RDV pris",
+                  "value": "Converti / RDV pris"
+                },
+                {
+                  "name": "RDV programmé",
+                  "value": "RDV programmé"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date d’entrée",
+              "displayName": "Date d’entrée",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Conseiller assigné",
+              "displayName": "Conseiller assigné",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date de rendez-vous",
+              "displayName": "Date de rendez-vous",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Nb docs reçus",
+              "displayName": "Nb docs reçus",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Docs manquants",
+              "displayName": "Docs manquants",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Documents",
+              "displayName": "Documents",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Record_ID",
+              "displayName": "Record_ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Analyse – Résumé docs",
+              "displayName": "Analyse – Résumé docs",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Revenu net mensuel",
+              "displayName": "Analyse – Revenu net mensuel",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Taux endettement (%)",
+              "displayName": "Analyse – Taux endettement (%)",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Capacité emprunt",
+              "displayName": "Analyse – Capacité emprunt",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Incohérences",
+              "displayName": "Analyse – Incohérences",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Analyse – Avis global",
+              "displayName": "Analyse – Avis global",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        704,
+        224
+      ],
+      "id": "7182622f-672b-4d5a-bc52-fc14c9b51cad",
+      "name": "Update",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "2hQvAFWFQwBM9tMF",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.fields[\"Email\"] }}",
+        "subject": "Confirmation de votre rendez-vous téléphonique",
+        "message": "=Bonjour {{ $json.fields[\"Prénom\"] }}, <br><br>\n\nVotre rendez-vous téléphonique a bien été confirmé. <br>\n<br>\n📅 Date : {{ \n  new Date(\n    $node[\"Google Calendar Trigger\"].json[\"start\"][\"dateTime\"] \n    ?? $node[\"Google Calendar Trigger\"].json[\"start\"][\"date\"]\n  ).toLocaleString(\"fr-FR\")\n}}<br><br>\n\nÀ très bientôt,<br>\nL’équipe Paul Forbe.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        224
+      ],
+      "id": "59f58e69-df4e-4167-aaab-60a3e863005b",
+      "name": "Confirmation",
+      "webhookId": "1d9f6523-0574-464f-a7cd-faa89561bd48",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "iCcUWsp8HcE8L78R",
+          "name": "Gmail account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Email": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update record": {
+      "main": [
+        []
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Update record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update": {
+      "main": [
+        [
+          {
+            "node": "Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2348b457-a898-4cfe-95bf-2320165dfc88",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b4e9d444926f4024370274b94dc9c6a7fbef86efbb68b13c2dc76f8a0e312c2b"
+  },
+  "id": "55EB3IiBIYyDoPPi",
+  "tags": []
+}
